@@ -7,12 +7,13 @@ from telegram.error import BadRequest, Unauthorized
 from telegram.ext import CommandHandler, RegexHandler, run_async, Filters, CallbackQueryHandler
 from telegram.utils.helpers import mention_html, mention_markdown
 
-from emilia import dispatcher, LOGGER, spamfilters
+from emilia import dispatcher, LOGGER, spamfilters, OWNER_ID, SUDO_USERS, SUPPORT_USERS, STRICT_GBAN
 from emilia.modules.helper_funcs.chat_status import user_not_admin, user_admin
 from emilia.modules.log_channel import loggable
 from emilia.modules.sql import reporting_sql as sql
 
 from emilia.modules.languages import tl
+from emilia.modules.helper_funcs.alternate import send_message
 
 REPORT_GROUP = 5
 
@@ -32,27 +33,27 @@ def report_setting(bot: Bot, update: Update, args: List[str]):
 		if len(args) >= 1:
 			if args[0] in ("yes", "on"):
 				sql.set_user_setting(chat.id, True)
-				msg.reply_text(tl(update.effective_message, "Menghidupkan pelaporan! Anda akan diberi tahu setiap kali ada yang melaporkan sesuatu."))
+				send_message(update.effective_message, tl(update.effective_message, "Menghidupkan pelaporan! Anda akan diberi tahu setiap kali ada yang melaporkan sesuatu."))
 
 			elif args[0] in ("no", "off"):
 				sql.set_user_setting(chat.id, False)
-				msg.reply_text(tl(update.effective_message, "Mematikan pelaporan! Anda tidak akan mendapatkan laporan apa pun."))
+				send_message(update.effective_message, tl(update.effective_message, "Mematikan pelaporan! Anda tidak akan mendapatkan laporan apa pun."))
 		else:
-			msg.reply_text(tl(update.effective_message, "Preferensi laporan Anda saat ini: `{}`").format(sql.user_should_report(chat.id)),
+			send_message(update.effective_message, tl(update.effective_message, "Preferensi laporan Anda saat ini: `{}`").format(sql.user_should_report(chat.id)),
 						   parse_mode=ParseMode.MARKDOWN)
 
 	else:
 		if len(args) >= 1:
 			if args[0] in ("yes", "on"):
 				sql.set_chat_setting(chat.id, True)
-				msg.reply_text(tl(update.effective_message, "Menghidupkan pelaporan! Admin yang telah mengaktifkan laporan akan diberi tahu ketika seseorang menyebut /report "
+				send_message(update.effective_message, tl(update.effective_message, "Menghidupkan pelaporan! Admin yang telah mengaktifkan laporan akan diberi tahu ketika seseorang menyebut /report "
 							   "atau @admin."))
 
 			elif args[0] in ("no", "off"):
 				sql.set_chat_setting(chat.id, False)
-				msg.reply_text(tl(update.effective_message, "Mematikan pelaporan! Tidak ada admin yang akan diberitahukan ketika seseorang menyebut /report atau @admin."))
+				send_message(update.effective_message, tl(update.effective_message, "Mematikan pelaporan! Tidak ada admin yang akan diberitahukan ketika seseorang menyebut /report atau @admin."))
 		else:
-			msg.reply_text(tl(update.effective_message, "Pengaturan obrolan saat ini adalah: `{}`").format(sql.chat_should_report(chat.id)),
+			send_message(update.effective_message, tl(update.effective_message, "Pengaturan obrolan saat ini adalah: `{}`").format(sql.chat_should_report(chat.id)),
 						   parse_mode=ParseMode.MARKDOWN)
 
 
@@ -71,6 +72,11 @@ def report(bot: Bot, update: Update) -> str:
 	if chat and message.reply_to_message and sql.chat_should_report(chat.id):
 		reported_user = message.reply_to_message.from_user  # type: Optional[User]
 		chat_name = chat.title or chat.first or chat.username
+
+		a, b = user_protection_checker(bot, message.reply_to_message.from_user.id)
+		if not a:
+			return ""
+
 		admin_list = chat.get_administrators()
 
 		if chat.username and chat.type == Chat.SUPERGROUP:
@@ -251,6 +257,12 @@ def buttonask(bot, update):
 	key = CURRENT_REPORT.get(str(report_chat)+"key")
 
 	if isyes == "y":
+		a, b = user_protection_checker(bot, report_target)
+		if not a:
+			bot.edit_message_text(text=msg + b,
+							  chat_id=query.message.chat_id,
+							  message_id=query.message.message_id, parse_mode=ParseMode.HTML)
+			return
 		if splitter[0] == "1":
 			try:
 				bot.unbanChatMember(report_chat, report_target)
@@ -292,6 +304,25 @@ def buttonask(bot, update):
 							  chat_id=query.message.chat_id,
 							  message_id=query.message.message_id, parse_mode=ParseMode.HTML,
 							  reply_markup=key)
+
+
+def user_protection_checker(bot, user_id):
+	if not user_id:
+		return False, tl(update.effective_message, "Anda sepertinya tidak mengacu pada pengguna.")
+
+	if int(user_id) == OWNER_ID:
+		return False, "\n\nError: This one is my owner!"
+
+	if int(user_id) in SUDO_USERS:
+		return False, "\n\nError: User is under protection"
+
+	# if int(user_id) in SUPPORT_USERS:
+	# 	return False, "Error: User is under protection"
+
+	if int(user_id) == bot.id:
+		return False, "\n\nError: This is myself!"
+
+	return True, ""
 
 
 def __migrate__(old_chat_id, new_chat_id):

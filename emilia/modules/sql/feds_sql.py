@@ -107,6 +107,7 @@ FEDERATION_BANNED_USERID = {}
 
 FEDERATION_NOTIFICATION = {}
 FEDS_SUBSCRIBER = {}
+MYFEDS_SUBSCRIBER = {}
 
 
 def get_fed_info(fed_id):
@@ -137,6 +138,34 @@ def get_user_fban(fed_id, user_id):
 	if not user_info:
 		return None, None, None
 	return user_info['first_name'], user_info['reason'], user_info['time']
+
+def get_user_admin_fed_name(user_id):
+	user_feds = []
+	for f in FEDERATION_BYFEDID:
+		if int(user_id) in eval(eval(FEDERATION_BYFEDID[f]['fusers'])['members']):
+			user_feds.append(FEDERATION_BYFEDID[f]['fname'])
+	return user_feds
+
+def get_user_owner_fed_name(user_id):
+	user_feds = []
+	for f in FEDERATION_BYFEDID:
+		if int(user_id) == int(eval(FEDERATION_BYFEDID[f]['fusers'])['owner']):
+			user_feds.append(FEDERATION_BYFEDID[f]['fname'])
+	return user_feds
+
+def get_user_admin_fed_full(user_id):
+	user_feds = []
+	for f in FEDERATION_BYFEDID:
+		if int(user_id) in eval(eval(FEDERATION_BYFEDID[f]['fusers'])['members']):
+			user_feds.append({"fed_id": f, "fed": FEDERATION_BYFEDID[f]})
+	return user_feds
+
+def get_user_owner_fed_full(user_id):
+	user_feds = []
+	for f in FEDERATION_BYFEDID:
+		if int(user_id) == int(eval(FEDERATION_BYFEDID[f]['fusers'])['owner']):
+			user_feds.append({"fed_id": f, "fed": FEDERATION_BYFEDID[f]})
+	return user_feds
 
 def get_user_fbanlist(user_id):
 	banlist = FEDERATION_BANNED_FULL
@@ -195,6 +224,18 @@ def del_fed(fed_id):
 			FEDERATION_BANNED_USERID.pop(fed_id)
 		if FEDERATION_BANNED_FULL.get(fed_id):
 			FEDERATION_BANNED_FULL.pop(fed_id)
+		# Delete fedsubs
+		getall = MYFEDS_SUBSCRIBER.get(fed_id)
+		if getall:
+			for x in getall:
+				getsubs = SESSION.query(FedSubs).get((fed_id, str(x)))
+				if getsubs:
+					SESSION.delete(getsubs)
+					SESSION.commit()
+		if FEDS_SUBSCRIBER.get(fed_id):
+			FEDS_SUBSCRIBER.pop(fed_id)
+		if MYFEDS_SUBSCRIBER.get(fed_id):
+			MYFEDS_SUBSCRIBER.pop(fed_id)
 		# Delete from database
 		curr = SESSION.query(Federations).get(fed_id)
 		if curr:
@@ -388,8 +429,9 @@ def fban_user(fed_id, user_id, first_name, last_name, user_name, reason, time):
 
 
 def multi_fban_user(multi_fed_id, multi_user_id, multi_first_name, multi_last_name, multi_user_name, multi_reason):
-	with FEDS_LOCK:
+	if True: #with FEDS_LOCK:
 		counter = 0
+		time = 0
 		for x in range(len(multi_fed_id)):
 			fed_id = multi_fed_id[x]
 			user_id = multi_user_id[x]
@@ -582,7 +624,7 @@ def subs_fed(fed_id, my_fed):
 
 def unsubs_fed(fed_id, my_fed):
 	with FEDS_SUBSCRIBER_LOCK:
-		getsubs = SESSION.query(FedSubs).get(fed_id, my_fed)
+		getsubs = SESSION.query(FedSubs).get((fed_id, my_fed))
 		if getsubs:
 			if my_fed in FEDS_SUBSCRIBER.get(fed_id, set()):  # sanity check
 				FEDS_SUBSCRIBER.get(fed_id, set()).remove(my_fed)
@@ -604,15 +646,7 @@ def get_spec_subs(fed_id, fed_target):
 		return FEDS_SUBSCRIBER.get(fed_id, fed_target)
 
 def get_mysubs(my_fed):
-	allfed = list(FEDS_SUBSCRIBER)
-	mysubs = []
-	for x in allfed:
-		if x == my_fed:
-			continue
-		getsub = FEDS_SUBSCRIBER.get(x, my_fed)
-		if getsub:
-			mysubs.append(x)
-	return mysubs
+	return list(MYFEDS_SUBSCRIBER.get(my_fed))
 
 def get_subscriber(fed_id):
 	return FEDS_SUBSCRIBER.get(fed_id, set())
@@ -692,16 +726,26 @@ def __load_all_feds_settings():
 
 def __load_feds_subscriber():
 	global FEDS_SUBSCRIBER
+	global MYFEDS_SUBSCRIBER
 	try:
 		feds = SESSION.query(FedSubs.fed_id).distinct().all()
 		for (fed_id,) in feds:  # remove tuple by ( ,)
 			FEDS_SUBSCRIBER[fed_id] = []
+			MYFEDS_SUBSCRIBER[fed_id] = []
 
 		all_fedsubs = SESSION.query(FedSubs).all()
 		for x in all_fedsubs:
 			FEDS_SUBSCRIBER[x.fed_id] += [x.fed_subs]
+			try:
+				MYFEDS_SUBSCRIBER[x.fed_subs] += [x.fed_id]
+			except KeyError:
+				getsubs = SESSION.query(FedSubs).get((x.fed_id, x.fed_subs))
+				if getsubs:
+					SESSION.delete(getsubs)
+					SESSION.commit()
 
 		FEDS_SUBSCRIBER = {x: set(y) for x, y in FEDS_SUBSCRIBER.items()}
+		MYFEDS_SUBSCRIBER = {x: set(y) for x, y in MYFEDS_SUBSCRIBER.items()}
 
 	finally:
 		SESSION.close()

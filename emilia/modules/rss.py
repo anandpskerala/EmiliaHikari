@@ -10,6 +10,7 @@ from emilia.modules.helper_funcs.chat_status import user_admin
 from emilia.modules.sql import rss_sql as sql
 
 from emilia.modules.languages import tl
+from emilia.modules.helper_funcs.alternate import send_message
 
 def show_url(bot, update, args):
     tg_chat_id = str(update.effective_chat.id)
@@ -50,9 +51,9 @@ def show_url(bot, update, args):
             else:
                 bot.send_message(chat_id=tg_chat_id, text=feed_message, parse_mode=ParseMode.HTML)
         else:
-            update.effective_message.reply_text(tl(update.effective_message, "Tautan ini bukan tautan Umpan RSS"))
+            send_message(update.effective_message, tl(update.effective_message, "Tautan ini bukan tautan Umpan RSS"))
     else:
-        update.effective_message.reply_text(tl(update.effective_message, "URL hilang"))
+        send_message(update.effective_message, tl(update.effective_message, "URL hilang"))
 
 
 def list_urls(bot, update):
@@ -104,15 +105,15 @@ def add_url(bot, update, args):
 
             # check if there's an entry already added to DB by the same user in the same group with the same link
             if row:
-                update.effective_message.reply_text(tl(update.effective_message, "URL ini sudah ditambahkan"))
+                send_message(update.effective_message, tl(update.effective_message, "URL ini sudah ditambahkan"))
             else:
                 sql.add_url(tg_chat_id, tg_feed_link, tg_old_entry_link)
 
-                update.effective_message.reply_text(tl(update.effective_message, "URL ditambahkan ke langganan"))
+                send_message(update.effective_message, tl(update.effective_message, "URL ditambahkan ke langganan"))
         else:
-            update.effective_message.reply_text(tl(update.effective_message, "Tautan ini bukan tautan Umpan RSS"))
+            send_message(update.effective_message, tl(update.effective_message, "Tautan ini bukan tautan Umpan RSS"))
     else:
-        update.effective_message.reply_text(tl(update.effective_message, "URL hilang"))
+        send_message(update.effective_message, tl(update.effective_message, "URL hilang"))
 
 
 @user_admin
@@ -133,13 +134,13 @@ def remove_url(bot, update, args):
             if user_data:
                 sql.remove_url(tg_chat_id, tg_feed_link)
 
-                update.effective_message.reply_text(tl(update.effective_message, "URL dihapus dari langganan"))
+                send_message(update.effective_message, tl(update.effective_message, "URL dihapus dari langganan"))
             else:
-                update.effective_message.reply_text(tl(update.effective_message, "Anda belum berlangganan ke URL ini"))
+                send_message(update.effective_message, tl(update.effective_message, "Anda belum berlangganan ke URL ini"))
         else:
-            update.effective_message.reply_text(tl(update.effective_message, "Tautan ini bukan tautan Umpan RSS"))
+            send_message(update.effective_message, tl(update.effective_message, "Tautan ini bukan tautan Umpan RSS"))
     else:
-        update.effective_message.reply_text(tl(update.effective_message, "URL hilang"))
+        send_message(update.effective_message, tl(update.effective_message, "URL hilang"))
 
 
 def rss_update(bot, job):
@@ -183,25 +184,36 @@ def rss_update(bot, job):
                         bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.HTML)
                     except error.Unauthorized:
                         print("Cannot send msg bcz bot is kicked")
+                        sql.remove_url(tg_chat_id, tg_feed_link)
                 else:
                     try:
                         bot.send_message(chat_id=tg_chat_id, text=tl(tg_chat_id, "<b>Peringatan:</b> Pesan terlalu panjang untuk dikirim"),
                                      parse_mode=ParseMode.HTML)
                     except error.Unauthorized:
                         print("Cannot send msg bcz bot is kicked")
+                        sql.remove_url(tg_chat_id, tg_feed_link)
         else:
             for link, title in zip(reversed(new_entry_links[-5:]), reversed(new_entry_titles[-5:])):
                 final_message = "<b>{}</b>\n\n{}".format(html.escape(title), html.escape(link))
 
                 if len(final_message) <= constants.MAX_MESSAGE_LENGTH:
-                    bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.HTML)
+                    try:
+                        bot.send_message(chat_id=tg_chat_id, text=final_message, parse_mode=ParseMode.HTML)
+                    except error.Unauthorized:
+                        sql.remove_url(tg_chat_id, tg_feed_link)
                 else:
-                    bot.send_message(chat_id=tg_chat_id, text=tl(tg_chat_id, "<b>Peringatan:</b> Pesan terlalu panjang untuk dikirim"),
+                    try:
+                        bot.send_message(chat_id=tg_chat_id, text=tl(tg_chat_id, "<b>Peringatan:</b> Pesan terlalu panjang untuk dikirim"),
                                      parse_mode=ParseMode.HTML)
+                    except error.Unauthorized:
+                        sql.remove_url(tg_chat_id, tg_feed_link)
 
-            bot.send_message(chat_id=tg_chat_id, parse_mode=ParseMode.HTML,
+            try:
+                bot.send_message(chat_id=tg_chat_id, parse_mode=ParseMode.HTML,
                              text=tl(tg_chat_id, "<b>Peringatan: </b>{} kejadian telah ditinggalkan untuk mencegah spam")
                              .format(len(new_entry_links) - 5))
+            except error.Unauthorized:
+                sql.remove_url(tg_chat_id, tg_feed_link)
 
 
 def rss_set(bot, job):

@@ -69,7 +69,7 @@ every donation helps and motivates him to make me better.
 All donated money will be given to a better VPS to host me, and or some food. \
 He is just an ordinary person, so it will really help him!
 
-If you really are interested in donating, please visit paypal.me/AyraHikari, Thank you 😁""",
+If you really are interested in donating, please visit ayrahikari.github.io/donations.html, Thank you 😁""",
 	"Kembali": "Back",
 	"Hubungi saya di PM untuk mendapatkan daftar perintah.": "Contact me in PM to get the list of possible commands.",
 	"Tolong": "Help",
@@ -86,6 +86,7 @@ If you really are interested in donating, please visit paypal.me/AyraHikari, Tha
 	"Saya sudah PM Anda tentang donasi untuk pencipta saya!": "I've PM'ed you about donating to my creator!",
 	"Hubungi saya di PM dulu untuk mendapatkan informasi donasi.": "Contact me in PM first to get donation information.",
 	"Ini bantuan untuk modul *{}*:\n": "Here is the help for the *{}* module:\n",
+	"Anda sekarang dapat mengambil catatan di grup.": "Now you can get notes in group.",
 
 # admin
 	"Bagaimana saya ingin menaikan jabatan seseorang yang sudah menjadi admin?": "How am I meant to promote someone that's already an admin?",
@@ -109,12 +110,19 @@ If you really are interested in donating, please visit paypal.me/AyraHikari, Tha
 	"Teks markdown salah!\nJika anda tidak tahu apa itu markdown, silahkan ketik `/markdownhelp` pada PM.": "Wrong markdown text!\nIf you don't know what markdown is, please type `/markdownhelp` in PM.",
 	"Saya tidak punya akses untuk pin pesan!": "I don't have access to pin message!",
 	"\n\nKamu adalah *{}*": "\n\nYou are *{}*",
+	"Permanen pin saat ini di atur: `{}`": "Current permanent pin: `{}`",
+	"\nUntuk menonaktifkan permanen pin: `/permanentpin off`": "\nTo disable permanent pin: `/permanentpin off`",
+	"\n\n[Pesan permanen pin ada disini]({})": "\n\n[Permanent pin message is here]({})",
+	"Permanen pin telah di nonaktifkan!": "Permanent pin has been disabled!",
+	"Permanent pin berhasil di atur!": "Successfully set permanent pin!",
+	"*Permanent pin error:*\nI can't pin messages here!\nMake sure I'm admin and can pin messages.\n\nPermanent pin disabled now, [here is your old pinned message]({})": "*Permanen pin error:*\nSaya tidak bisa menyematkan pesan di sini!\nPastikan saya admin dan dapat pin pesan.\n\nPermanen pin di nonaktifkan, [pesan permanen pin lama ada disini]({})",
 	"admin_help": """
  - /adminlist | /admins: list of admins in the chat
 *Admin only:*
  - /pin: silently pins the message replied to - add 'loud' or 'notify' to give notifs to users.
  - /unpin: unpins the currently pinned message
  - /permapin <teks>: Pin a custom messages via bots. This message can contain markdown, and can be used in replies to the media include additional buttons and text.
+ - /permanentpin: Set a permanent pin for supergroup chat, when an admin or telegram channel change pinned message, bot will change pinned message immediatelly
  - /invitelink: gets invitelink
  - /promote: promotes the user replied to
  - /demote: demotes the user replied to
@@ -263,9 +271,11 @@ Note that files/photos from other bots can't be imported due to telegram restric
 
 *Admin only:*
  - /ban <userhandle>: bans a user. (via handle, or reply)
+ - /sban <userhandle>: silent ban a user, bot will not reply and delete your sban message.
  - /tban <userhandle> x(m/h/d): bans a user for x time. (via handle, or reply). m = minutes, h = hours, d = days.
  - /unban <userhandle>: unbans a user. (via handle, or reply)
  - /kick <userhandle>: kicks a user, (via handle, or reply)
+ - /skick <userhandle>: silent kick a user, bot will not reply and delete your skick message.
 """,
 
 # Blacklist
@@ -484,7 +494,7 @@ Note:
 -> `/nowarn` | `/stopwarn`
 -> `/warnlist` | `/warnfilters`
 -> `/warnlimit`
--> `/strongwarn`
+-> `/warnmode`
 """,
 	"Sambungan telah dinonaktifkan untuk obrolan ini": "Connection has been disabled for this chat",
 	"Koneksi di aktifkan untuk obrolan ini": "Connection has been enabled for this chat",
@@ -495,6 +505,7 @@ Note:
 	"Saat ini Anda tidak terhubung dengan grup.\n": "You are currently not connected in any group.\n",
 	"ID Obrolan tidak valid!": "Invalid Chat ID!",
 	"Berhasil tersambung ke *{}*. Gunakan /connection untuk informasi perintah apa saja yang tersedia.": "Successfully connected to *{}*. Use /connection for see current available commands.",
+	"Berhasil tersambung ke *{}*.": "Successfully connected to *{}*.",
 	"Koneksi gagal!": "Connection failed!",
 	"Sambungan ke obrolan ini tidak diizinkan!": "Connection to this chat is not allowed!",
 	"Anda telah terkoneksi pada *{}* (`{}`)": "You are connected to *{}* (`{}`)",
@@ -561,6 +572,9 @@ NOTE: all filter keywords are in lowercase. If you want your keyword to be a sen
 	"{} item yang dinonaktifkan, pada {} obrolan.": "{} disabled items, across {} chats.",
 	"Perintah-perintah berikut saat ini dibatasi:\n{}": "The following commands are currently restricted:\n{}",
 	"Tidak ada perintah yang dinonaktifkan!": "No commands are disabled!",
+	"Ketika command di nonaktifkan, maka saya *akan menghapus* pesan command tsb.": "When command was disabled, I *will delete* that message.",
+	"Saya *tidak akan menghapus* pesan dari command yang di nonaktifkan.": "When command was disabled, I *will not delete* that message.",
+	"Opsi disable del saat ini: *{}*": "Current disable del settings: *{}*",
 	"disable_help": """
  - /cmds: check the current status of disabled commands
 
@@ -568,6 +582,7 @@ NOTE: all filter keywords are in lowercase. If you want your keyword to be a sen
  - /enable <cmd name>: enable that command
  - /disable <cmd name>: disable that command
  - /listcmds: list all possible toggleable commands
+ - /disabledel: delete message when command is disabled
     """,
 
 # Federation
@@ -691,6 +706,9 @@ NOTE: all filter keywords are in lowercase. If you want your keyword to be a sen
 	"\nUntuk info federasi, ketik `/fedinfo <fedid>`. Untuk berhenti berlangganan ketik `/unsubfed <fedid>`.": "\nTo get fed info `/fedinfo <fedid>`. To unsubscribe `/unsubfed <fedid>`.",
 	"Federasi `{}` telah mengikuti federasi `{}`": "Federation `{}` has subscribe the federation `{}`",
 	"Federasi `{}` sudah tidak mengikuti `{}`": "Federation `{}` has unsubscribe fed `{}`.",
+	"*Ini adalah federasi milik anda:\n*": "*You are owner of feds:\n*",
+	"*Anda tidak mempunyai federasi!*": "*You are not have any feds!*",
+	"\n\n<b>Pengguna ini adalah pemilik federasi ini:</b>\n<code>": "\n\n<b>This user is a owner fed in the current federation:</b>\n<code>",
 	"feds_help": """
 Ah, group management. It's all fun and games, until you start getting spammers in, and you need to ban them. Then you need to start banning more, and more, and it gets painful.
 But then you have multiple groups, and you don't want these spammers in any of your groups - how can you deal? Do you have to ban them manually, in all your groups?
@@ -705,7 +723,7 @@ You can even appoint federation admins, so that your trustworthiest admins can b
  - /joinfed <FedID>: Joins the current chat to the federation. Each chat can only be in one federation. Only chat owners can do this.
  - /leavefed <FedID>: Leaves the current federation. Only chat owners can do this.
 
-*Only federated admin:*
+*Only federation admin:*
  - /newfed <fedname>: Creates a new federation with the given name. Users are only allowed to own one federation. Using this method when you already have a fed will simply change the federation name. (max 64 characters)
  - /delfed: Deletes your federation, and any information relating to it. Will not unban any banned users.
  - /fedinfo <FedID>: Information about the specified federation.
@@ -718,6 +736,7 @@ You can even appoint federation admins, so that your trustworthiest admins can b
  - /fedadmins: Show federated admin.
  - /fednotif <on/off>: Set federation notified in PM when user is fban/unfban.
  - /fedchats: Get all chat connected in federation.
+ - /myfeds: Get all your feds, only for feds owner
 
 *Only federation owner:*
  - /fpromote <user>: Promotes the user to fed admin in your fed.
@@ -964,6 +983,10 @@ Keep in mind that your message <b>MUST</b> contain some text other than just a b
 	"File/foto ini gagal diimpor karena berasal dari bot lain. Ini adalah pembatasan API telegram, dan tidak bisa dihindari. Maaf untuk ketidaknyamanannya!": "These files/photos failed to import due to originating from another bot. This is a telegram API restriction, and can't be avoided. Sorry for the inconvenience!",
 	"{} catatan, pada {} obrolan.": "`{}` notes, accross {} chats.",
 	"Ada catatan `{}` dalam obrolan ini.": "There are `{}` notes in this chat.",
+	"Private Note di *aktifkan*, ketika pengguna mengambil catatan, pesan catatan akan dikirim ke PM dan pesan pengguna akan segera di hapus.": "Private Note was *enabled*, when users get notes, the message will be sent to the PM and the hashtag message will be deleted.",
+	"Private Note di *aktifkan*, ketika pengguna mengambil catatan, pesan catatan akan dikirim ke PM.": "Private Note was *enabled*, when users get notes, the message will be sent to the PM.",
+	"Private Note di *non-aktifkan*, pesan catatan akan di kirim di grup.": "Private Note was *disabled*, notes will be sent to group.",
+	"Pengaturan Private Note di {}: *{}*{}": "Current Private Note settings at {}: *{}*{}",
 	"notes_help": """
  - /get <notename>: get the note with this notename
  - #<notename>: same as /get
@@ -978,6 +1001,7 @@ A button can be added to a note by using standard markdown link syntax - the lin
 `buttonurl:` section, as such: `[somelink](buttonurl:example.com)`. Check /markdownhelp for more info.
  - /save <notename>: save the replied message as a note with name notename
  - /clear <notename>: clear note with this name
+  - /privatenote <on/yes/off/no> <? del>: whether or not to send the note in PM. Write `del` besides on/off to delete hashtag message on group.
 """,
 	"Menghidupkan pelaporan! Anda akan diberi tahu setiap kali ada yang melaporkan sesuatu.": "Turned on reporting! You'll be notified whenever anyone reports something.",
 	"Mematikan pelaporan! Anda tidak akan mendapatkan laporan apa pun.": "Turned off reporting! You wont get any reports.",
@@ -1042,6 +1066,8 @@ NOTE: neither of these will get triggered if used by admins
 
 NOTE: In groups, only admins can add/remove RSS links to the group's subscription
 """,
+
+# rules
 	"Pintasan aturan untuk obrolan ini belum diatur dengan benar! Mintalah admin untuk perbaiki ini.": "The rules shortcut for this chat hasn't been set properly! Ask admins to fix this.",
 	"Peraturan untuk *{}* adalah:\n\n{}": "The rules for *{}* are:\n\n{}",
 	"Admin grup belum menetapkan aturan apa pun untuk obrolan ini. Bukan berarti obrolan ini tanpa hukum...!": "The group admins haven't set any rules for this chat yet. This probably doesn't mean it's lawless though...!",
@@ -1053,12 +1079,16 @@ NOTE: In groups, only admins can add/remove RSS links to the group's subscriptio
 	"Berhasil membersihkan aturan!": "Successfully cleared rules!",
 	"{} obrolan memiliki aturan yang ditetapkan.": "{} chats have rules set.",
 	"Obrolan ini memiliki aturan yang ditetapkan: `{}`": "This chat has had it's rules set: `{}`",
+	"Private Rules di *aktifkan*, pesan peraturan akan di kirim di PM.": "Private Rules was *enabled*, rules message will send to PM.",
+	"Private Rules di *non-aktifkan*, pesan peraturan akan di kirim di grup.": "Private Rules was *disabled*, rules message will send to group.",
+	"Pengaturan Private Rules di {}: *{}*": "Private Rules Settings in {}: *{}*",
 	"rules_help": """
  - /rules: get the rules for this chat.
 
 *Admin only:*
  - /setrules <your rules here>: set the rules for this chat.
  - /clearrules: clear the rules for this chat.
+ - /privaterules <yes/no/on/off>: should the rules be sent to private chat. Default: yes.
 """,
 
 # userinfo
@@ -1161,7 +1191,7 @@ NOTE: In groups, only admins can add/remove RSS links to the group's subscriptio
 be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is an angry user`. 
  - /nowarn <keyword>: stop a warning filter
  - /warnlimit <num>: set the warning limit
- - /strongwarn <on/yes/off/no>: If set to on, exceeding the warn limit will result in a ban. Else, will just kick.
+ - /warnmode <kick/ban/mute>: Set warn mode, when user exceeding the warn limit will result in that mode.
 """,
 
 # weather
@@ -1194,6 +1224,20 @@ be a sentence, encompass it with quotes, as such: `/addwarn "very angry" This is
 	"Catatan: Terjadi kesalahan saat mengirim pesan kustom. Harap perbarui.": "Note: An error occurred while sending custom messages. Please update.",
 	"Kamu telah disuarakan!": "You've been unmuted!",
 	"Kamu bukan pengguna baru!": "You are not a new member!",
+
+# cleaner
+	"Penghapus pesan biru telah di *non-aktifkan* di *{}*.": "Blue text cleaner was *disabled* in *{}*.",
+	"Penghapus pesan biru telah di *non-aktifkan*.": "Blue text cleaner was *disabled*.",
+	"Penghapus pesan biru telah di *aktifkan* di *{}*.": "Blue text cleaner was *enabled* in *{}*.",
+	"Penghapus pesan biru telah di *aktifkan*.": "Blue text cleaner was *enabled*.",
+	"Pengaturan untuk penghapus pesan biru saat ini di {}: *{}*": "Curent settings for Blue text cleaner at {}: *{}*",
+	"cleaner_help": """
+*Admin only:*
+ - /cleanbluetext <on/off>: Delete all blue text message.
+
+Note:
+- This feature may broke others bot
+""",
 
 	# This is optional since it disabled by default
 	"Kamu bukan pengguna yang di tuju!": "You are not the intended user!",

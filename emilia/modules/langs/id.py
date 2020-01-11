@@ -41,7 +41,7 @@ setiap sumbangan membantu dan memotivasi dia untuk membuat saya lebih baik.
 Semua uang sumbangan akan diberikan ke VPS yang lebih baik untuk menjadi tuan rumah saya, dan atau beberapa makanan. \
 Dia hanya orang biasa, jadi akan sangat membantu dia!
 
-Jika anda memang berminat untuk donate, silahkan kunjungi paypal.me/AyraHikari, Terima kasih 😁""",
+Jika anda memang berminat untuk donate, silahkan kunjungi ayrahikari.github.io/donations.html, Terima kasih 😁""",
 	
 # Help modules
 	"language_help": """Tidak semua grup berbicara bahasa Indonesia; beberapa grup lebih suka Emilia menanggapi dalam bahasa mereka sendiri.
@@ -62,6 +62,7 @@ Perintah yang tersedia adalah:
  - /pin: diam-diam pin pesan yang dibalas - tambahkan 'loud' atau 'notify' untuk memberikan notif kepada pengguna.
  - /unpin: buka pin pesan yang saat ini disematkan
  - /permapin <teks>: Sematkan pesan khusus melalui bot. Pesan ini dapat berisi markdown, dan dapat digunakan dalam balasan ke media untuk menyertakan tombol dan teks tambahan.
+ - /permanentpin: Setel pin permanen untuk obrolan supergroup, ketika admin atau saluran telegram mengubah pesan yang disematkan, bot akan segera mengubah pesan yang disematkan.
  - /invitelink: dapatkan tautan undangan
  - /promote: mempromosikan pengguna yang dibalas
  - /demote: demosikan pengguna yang dibalas
@@ -97,9 +98,11 @@ Ketika ditandai sebagai AFK, sebutan apa pun akan dibalas dengan pesan untuk men
 
 *Hanya admin:*
  - /ban <userhandle>: banned seorang pengguna. (via pegangan, atau balasan)
+ - /sban <userhandle>: silent ban seorang pengguna, bot tidak akan membalas dan menghapus pesan sban Anda.
  - /tban <userhandle> x(m/h/d): melarang pengguna untuk x waktu. (via pegangan, atau balasan). m = menit, h = jam, d = hari.
  - /unban <userhandle>: unbanned seorang pengguna. (via pegangan, atau balasan)
  - /kick <userhandle>: menendang seorang pengguna, (via pegangan, atau balasan)
+ - /skick <userhandle>: silent kick seorang pengguna, bot tidak akan membalas dan menghapus pesan skick Anda.
 """,
 	"blacklist_help": """
 Blacklist digunakan untuk menghentikan pemicu tertentu dari yang dikatakan dalam kelompok. Kapan pun pemicu disebutkan, \
@@ -228,7 +231,7 @@ Catatan:
 -> `/nowarn` | `/stopwarn`
 -> `/warnlist` | `/warnfilters`
 -> `/warnlimit`
--> `/strongwarn`
+-> `/warnmode`
 """,
 	"connection_help": """
 Atur grup anda via PM dengan mudah.
@@ -254,6 +257,7 @@ CATATAN: semua filter kata kunci dalam huruf kecil. Jika Anda ingin kata kunci A
  - /enable <cmd name>: aktifkan perintah itu
  - /disable <cmd name>: nonaktifkan perintah itu
  - /listcmds: daftar semua perintah toggleable yang memungkinkan
+ - /disabledel: hapus pesan jika perintah dinonaktifkan
     """,
     "feds_help": """
 Ah, manajemen grup. Semuanya menyenangkan, sampai mulai spammer masuk grup anda, dan Anda harus mencekalnya. Maka Anda perlu mulai melarang lebih banyak, dan lebih banyak lagi, dan itu terasa menyakitkan.
@@ -283,7 +287,6 @@ Anda bahkan dapat menunjuk admin federasi, sehingga admin tepercaya Anda dapat m
  - /fednotif <on/off>: Atur federasi notif di PM ketika ada pengguna yang di fban/unfban.
  - /fedchats: Dapatkan semua chat yang terhubung di federasi.
 
-
 *Hanya pemilik federasi:*
  - /fpromote <user>: mempromosikan pengguna untuk memberi fed admin. Pemilik fed saja.
  - /fdemote <user>: menurunkan pengguna dari admin federasi ke pengguna normal. Pemilik fed saja.
@@ -292,6 +295,7 @@ Anda bahkan dapat menunjuk admin federasi, sehingga admin tepercaya Anda dapat m
  - /subfed <fedid>: untuk berlangganan federasi, dapat berlangganan beberapa federasi.
  - /unsubfed <fedid>: berhenti berlangganan federasi itu.
  - /fedsubs: periksa semua yang berlangganan federasi saat ini.
+ - /myfeds: dapatkan semua feds Anda, hanya untuk pemilik feds
 """,
     "globalbans_help": """
 *Hanya admin:*
@@ -385,6 +389,7 @@ Sebuah tombol dapat ditambahkan ke catatan dengan menggunakan sintaks markdown s
 bagian `buttonurl:`, Seperti: `[tulisannya](buttonurl:contoh.com)`. Cek /markdownhelp untuk info lebih lanjut.
  - /save <notename>: simpan pesan yang dijawab sebagai catatan dengan nama nama file
  - /clear <notename>: hapus catatan dengan nama ini
+ - /privatenote <on/yes/off/no> <?del>: apakah atau tidak untuk mengirim catatan di PM. Tulis `del` di samping on/off untuk menghapus pesan hashtag pada grup.
 """,
 	"reporting_help": """
  - /report <alasan>: membalas pesan untuk melaporkannya ke admin.
@@ -410,6 +415,7 @@ CATATAN: Dalam grup, hanya admin yang dapat menambah/menghapus tautan RSS ke lan
 *Hanya admin:*
  - /setrules <aturan Anda di sini>: atur aturan untuk obrolan ini.
  - /clearrules: kosongkan aturan untuk obrolan ini.
+ - /privaterules <yes/no/on/off>: apakah peraturan akan di kirim ke PM. Default: aktif.
 """,
 	"userinfo_help": """
  - /setbio <text>: saat membalas, akan menyimpan bio pengguna lain
@@ -432,8 +438,7 @@ sebagai balasan.
 menjadi kalimat, mencakup dengan tanda kutip, seperti: `/addwarn "sangat marah" Ini adalah pengguna yang marah`. 
  - /nowarn <keyword>: hentikan filter peringatan
  - /warnlimit <num>: mengatur batas peringatan
- - /strongwarn <on/yes/off/no>: Jika diatur ke on, maka melebihi batas peringatan akan menghasilkan pemblokiran. \
-Sedangkan off, hanya akan menendang.
+ - /warnmode <kick/ban/mute>: Jika diatur, ketika pengguna maka melebihi batas peringatan akan menghasilkan mode tersebut.
 """,
 	"weather_lang": "id",
 	"weather_help": """
@@ -466,6 +471,13 @@ Balas pesan stiker atau data apa pun yang Anda inginkan dengan teks `/setwelcome
 Tip: gunakan `/welcome noformat` untuk mengambil pesan sambutan yang belum diformat.
 Ini akan mengambil pesan selamat datang dan mengirimkannya tanpa memformatnya; memberi Anda markdown mentah, memungkinkan Anda untuk mengedit dengan mudah.
 Ini juga berfungsi dengan /goodbye.
+""",
+	"cleaner_help": """
+*Admin only:*
+ - /cleanbluetext <on/off>: Hapus semua pesan biru.
+
+Catatan:
+- Fitur ini dapat merusak bot orang lain
 """,
 	"exclusive_help": """
  - /stickerid: balas pesan stiker di PM untuk mendapatkan id stiker

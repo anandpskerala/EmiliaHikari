@@ -1,4 +1,6 @@
 import os
+import sys
+import traceback
 
 from telegram.error import BadRequest, Unauthorized
 from telegram import Message, Chat, Update, Bot, MessageEntity
@@ -12,18 +14,20 @@ from emilia.modules.disable import DisableAbleCommandHandler, DisableAbleRegexHa
 from emilia.modules.helper_funcs.extraction import extract_user
 from emilia.modules.helper_funcs.filters import CustomFilters
 
+from emilia.modules.helper_funcs.alternate import send_message
+
 
 @run_async
 def reboot(bot: Bot, update: Update):
 	msg = update.effective_message
 	chat_id = update.effective_chat.id
-	update.effective_message.reply_text("Rebooting...", parse_mode=ParseMode.MARKDOWN)
+	send_message(update.effective_message, "Rebooting...", parse_mode=ParseMode.MARKDOWN)
 	try:
 		os.system("cd /home/ayra/emilia/ && python3.6 -m emilia &")
 		os.system('kill %d' % os.getpid())
-		update.effective_message.reply_text("Reboot Berhasil!", parse_mode=ParseMode.MARKDOWN)
+		send_message(update.effective_message, "Reboot Berhasil!", parse_mode=ParseMode.MARKDOWN)
 	except:
-		update.effective_message.reply_text("Reboot Gagal!", parse_mode=ParseMode.MARKDOWN)
+		send_message(update.effective_message, "Reboot Gagal!", parse_mode=ParseMode.MARKDOWN)
 
 @run_async
 def executor(bot: Bot, update: Update):
@@ -34,8 +38,10 @@ def executor(bot: Bot, update: Update):
 		chat = msg.chat.id
 		try:
 			exec(code)
-		except Exception as error:
-			bot.send_message(chat, "*Gagal:* {}".format(error), parse_mode="markdown", reply_to_message_id=msg.message_id)
+		except:
+			exc_type, exc_obj, exc_tb = sys.exc_info()
+			errors = traceback.format_exception(etype=exc_type, value=exc_obj, tb=exc_tb)
+			send_message(update.effective_message, "**Execute**\n`{}`\n\n*Failed:*\n```{}```".format(code, "".join(errors)), parse_mode="markdown")
 
 
 REBOOT_HANDLER = CommandHandler("emreboot", reboot, filters=Filters.user(OWNER_ID))

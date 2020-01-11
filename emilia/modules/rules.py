@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from telegram import Message, Update, Bot, User
 from telegram import ParseMode, InlineKeyboardMarkup, InlineKeyboardButton
@@ -9,10 +9,12 @@ from telegram.utils.helpers import escape_markdown
 import emilia.modules.sql.rules_sql as sql
 from emilia import dispatcher, spamfilters, OWNER_ID
 from emilia.modules.helper_funcs.chat_status import user_admin
-from emilia.modules.helper_funcs.string_handling import markdown_parser
+from emilia.modules.helper_funcs.misc import build_keyboard_alternate
+from emilia.modules.helper_funcs.string_handling import markdown_parser, button_markdown_parser
 from emilia.modules.connection import connected
 
 from emilia.modules.languages import tl
+from emilia.modules.helper_funcs.alternate import send_message
 
 
 @run_async
@@ -44,15 +46,17 @@ def send_rules(update, chat_id, from_pm=False):
         chat_id = conn
         chat_name = dispatcher.bot.getChat(conn).title
 
-    rules = sql.get_rules(chat_id)
+    rules, buttons = button_markdown_parser(sql.get_rules(chat_id))
     try:
         text = tl(update.effective_message, "Peraturan untuk *{}* adalah:\n\n{}").format(escape_markdown(chat.title), rules)
     except TypeError:
-        update.effective_message.reply_text(tl(update.effective_message, "Anda bisa lakukan command ini pada grup, bukan pada PM"))
+        send_message(update.effective_message, tl(update.effective_message, "Anda bisa lakukan command ini pada grup, bukan pada PM"))
         return ""
 
+    is_private = sql.get_private_rules(chat_id)
+
     if from_pm and rules:
-        bot.send_message(user.id, text, parse_mode=ParseMode.MARKDOWN)
+        bot.send_message(user.id, text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(build_keyboard_alternate(buttons)))
     elif from_pm:
         if conn:
             bot.send_message(user.id, tl(update.effective_message, "Admin grup belum menetapkan aturan apa pun untuk *{}*. "
@@ -61,20 +65,23 @@ def send_rules(update, chat_id, from_pm=False):
             bot.send_message(user.id, tl(update.effective_message, "Admin grup belum menetapkan aturan apa pun untuk obrolan ini. "
                                       "Bukan berarti obrolan ini tanpa hukum...!"))
     elif rules:
-        if update.effective_message.chat.type == "private" and rules:
-            bot.send_message(user.id, text, parse_mode=ParseMode.MARKDOWN)
+        if (update.effective_message.chat.type == "private" or not is_private) and rules:
+            if not is_private:
+                send_message(update.effective_message, text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(build_keyboard_alternate(buttons)))
+            else:
+                bot.send_message(user.id, text, parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(build_keyboard_alternate(buttons)))
         else:
-            update.effective_message.reply_text(tl(update.effective_message, "Hubungi saya di PM untuk mendapatkan aturan grup ini"),
+            send_message(update.effective_message, tl(update.effective_message, "Hubungi saya di PM untuk mendapatkan aturan grup ini"),
                                                 reply_markup=InlineKeyboardMarkup(
                                                     [[InlineKeyboardButton(text=tl(update.effective_message, "Peraturan"),
                                                                            url="t.me/{}?start={}".format(bot.username,
                                                                                                          chat_id))]]))
     else:
         if conn:
-            update.effective_message.reply_text(tl(update.effective_message, "Admin grup belum menetapkan aturan apa pun untuk *{}*. "
+            send_message(update.effective_message, tl(update.effective_message, "Admin grup belum menetapkan aturan apa pun untuk *{}*. "
                                                 "Bukan berarti obrolan ini tanpa hukum...!").format(chat_name), parse_mode="markdown")
         else:
-            update.effective_message.reply_text(tl(update.effective_message, "Admin grup belum menetapkan aturan apa pun untuk obrolan ini. "
+            send_message(update.effective_message, tl(update.effective_message, "Admin grup belum menetapkan aturan apa pun untuk obrolan ini. "
                                                 "Bukan berarti obrolan ini tanpa hukum...!"))
 
 
@@ -98,7 +105,7 @@ def set_rules(bot: Bot, update: Update):
         chat_name = dispatcher.bot.getChat(conn).title
     else:
         if update.effective_message.chat.type == "private":
-            update.effective_message.reply_text(tl(update.effective_message, "Anda bisa lakukan command ini pada grup, bukan pada PM"))
+            send_message(update.effective_message, tl(update.effective_message, "Anda bisa lakukan command ini pada grup, bukan pada PM"))
             return ""
         chat = update.effective_chat
         chat_id = update.effective_chat.id
@@ -111,9 +118,20 @@ def set_rules(bot: Bot, update: Update):
 
         sql.set_rules(chat_id, markdown_rules)
         if conn:
-            update.effective_message.reply_text(tl(update.effective_message, "Berhasil mengatur aturan untuk *{}*.").format(chat_name), parse_mode="markdown")
+            send_message(update.effective_message, tl(update.effective_message, "Berhasil mengatur aturan untuk *{}*.").format(chat_name), parse_mode="markdown")
         else:
-            update.effective_message.reply_text(tl(update.effective_message, "Berhasil mengatur aturan untuk grup ini."))
+            send_message(update.effective_message, tl(update.effective_message, "Berhasil mengatur aturan untuk grup ini."))
+
+    elif msg.reply_to_message and len(args) == 1:
+        txt = msg.reply_to_message.text
+        offset = len(txt) - len(raw_text)  # set correct offset relative to command
+        markdown_rules = markdown_parser(txt, entities=msg.parse_entities(), offset=offset)
+
+        sql.set_rules(chat_id, markdown_rules)
+        if conn:
+            send_message(update.effective_message, tl(update.effective_message, "Berhasil mengatur aturan untuk *{}*.").format(chat_name), parse_mode="markdown")
+        else:
+            send_message(update.effective_message, tl(update.effective_message, "Berhasil mengatur aturan untuk grup ini."))
 
 
 @run_async
@@ -133,7 +151,7 @@ def clear_rules(bot: Bot, update: Update):
         chat_name = dispatcher.bot.getChat(conn).title
     else:
         if update.effective_message.chat.type == "private":
-            update.effective_message.reply_text(tl(update.effective_message, "Anda bisa lakukan command ini pada grup, bukan pada PM"))
+            send_message(update.effective_message, tl(update.effective_message, "Anda bisa lakukan command ini pada grup, bukan pada PM"))
             return ""
         chat = update.effective_chat
         chat_id = update.effective_chat.id
@@ -141,7 +159,40 @@ def clear_rules(bot: Bot, update: Update):
 
     chat_id = update.effective_chat.id
     sql.set_rules(chat_id, "")
-    update.effective_message.reply_text(tl(update.effective_message, "Berhasil membersihkan aturan!"))
+    send_message(update.effective_message, tl(update.effective_message, "Berhasil membersihkan aturan!"))
+
+
+@run_async
+@user_admin
+def private_rules(bot: Bot, update: Update, args: List[str]):
+    spam = spamfilters(update.effective_message.text, update.effective_message.from_user.id, update.effective_chat.id, update.effective_message)
+    if spam == True:
+        return
+    chat = update.effective_chat  # type: Optional[Chat]
+    user = update.effective_user  # type: Optional[User]
+    conn = connected(bot, update, chat, user.id)
+    if conn:
+        chat_id = conn
+        chat_name = dispatcher.bot.getChat(conn).title
+    else:
+        chat_id = update.effective_chat.id
+        if chat.type == "private":
+            chat_name = chat.title
+        else:
+            chat_name = chat.title
+
+    if len(args) >= 1:
+        if args[0] in ("yes", "on", "ya"):
+            sql.private_rules(str(chat_id), True)
+            send_message(update.effective_message, tl(update.effective_message, "Private Rules di *aktifkan*, pesan peraturan akan di kirim di PM."), parse_mode="markdown")
+        elif args[0] in ("no", "off"):
+            sql.private_rules(str(chat_id), False)
+            send_message(update.effective_message, tl(update.effective_message, "Private Rules di *non-aktifkan*, pesan peraturan akan di kirim di grup."), parse_mode="markdown")
+        else:
+            send_message(update.effective_message, tl(update.effective_message, "Argumen tidak dikenal - harap gunakan 'yes', atau 'no'."))
+    else:
+        is_private = sql.get_private_rules(chat_id)
+        send_message(update.effective_message, tl(update.effective_message, "Pengaturan Private Rules di {}: *{}*").format(chat_name, "Enabled" if is_private else "Disabled"), parse_mode="markdown")
 
 
 def __stats__():
@@ -169,7 +220,9 @@ __mod_name__ = "Rules"
 GET_RULES_HANDLER = CommandHandler("rules", get_rules)#, filters=Filters.group)
 SET_RULES_HANDLER = CommandHandler("setrules", set_rules)#, filters=Filters.group)
 RESET_RULES_HANDLER = CommandHandler("clearrules", clear_rules)#, filters=Filters.group)
+PRIVATERULES_HANDLER = CommandHandler("privaterules", private_rules, pass_args=True)
 
 dispatcher.add_handler(GET_RULES_HANDLER)
 dispatcher.add_handler(SET_RULES_HANDLER)
 dispatcher.add_handler(RESET_RULES_HANDLER)
+dispatcher.add_handler(PRIVATERULES_HANDLER)
