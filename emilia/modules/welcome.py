@@ -186,83 +186,87 @@ def new_member(bot: Bot, update: Update):
 					keyboard = InlineKeyboardMarkup(keyb)
 					# Send message
 					try:
-						ENUM_FUNC_MAP[welc_type](chat.id, cust_content, caption=formatted_text, reply_markup=keyboard, parse_mode="markdown", reply_to_message_id=reply)
+						sent = ENUM_FUNC_MAP[welc_type](chat.id, cust_content, caption=formatted_text, reply_markup=keyboard, parse_mode="markdown", reply_to_message_id=reply)
 					except BadRequest:
-						send_message(update.effective_message, tl(update.effective_message, "Catatan: Terjadi kesalahan saat mengirim pesan kustom. Harap perbarui."))
+						sent = send_message(update.effective_message, tl(update.effective_message, "Catatan: Terjadi kesalahan saat mengirim pesan kustom. Harap perbarui."))
 					return
-				# else, move on
-				first_name = new_mem.first_name or "PersonWithNoName"  # edge case of empty name - occurs for some bugs.
-
-				if cust_welcome:
-					if new_mem.last_name:
-						fullname = "{} {}".format(first_name, new_mem.last_name)
-					else:
-						fullname = first_name
-					count = chat.get_members_count()
-					mention = mention_markdown(new_mem.id, first_name)
-					if new_mem.username:
-						username = "@" + escape_markdown(new_mem.username)
-					else:
-						username = mention
-
-					valid_format = escape_invalid_curly_brackets(cust_welcome, VALID_WELCOME_FORMATTERS)
-					if valid_format:
-						res = valid_format.format(first=escape_markdown(first_name),
-											  last=escape_markdown(new_mem.last_name or first_name),
-											  fullname=escape_markdown(fullname), username=username, mention=mention,
-											  count=count, chatname=escape_markdown(chat.title), id=new_mem.id)
-					else:
-						res = ""
-					buttons = sql.get_welc_buttons(chat.id)
-					keyb = build_keyboard(buttons)
 				else:
-					res = sql.DEFAULT_WELCOME.format(first=first_name)
-					keyb = []
+					# else, move on
+					first_name = new_mem.first_name or "PersonWithNoName"  # edge case of empty name - occurs for some bugs.
 
-				getsec, mutetime, custom_text = sql.welcome_security(chat.id)
-				
-				# If user ban protected don't apply security on him
-				if is_user_ban_protected(chat, new_mem.id, chat.get_member(new_mem.id)):
-					pass
-				elif getsec:
-					if mutetime:
-						if mutetime[:1] == "0":
-							try:
-								bot.restrict_chat_member(chat.id, new_mem.id, can_send_messages=False)
-								canrest = True
-							except BadRequest:
-								canrest = False
+					if cust_welcome:
+						if new_mem.last_name:
+							fullname = "{} {}".format(first_name, new_mem.last_name)
 						else:
-							mutetime = extract_time(update.effective_message, mutetime)
-							try:
-								bot.restrict_chat_member(chat.id, new_mem.id, until_date=mutetime, can_send_messages=False)
-								canrest = True
-							except BadRequest:
-								canrest = False
-					if canrest:
-						sql.add_to_userlist(chat.id, new_mem.id)
-						keyb.append([InlineKeyboardButton(text=str(custom_text), callback_data="check_bot_({})".format(new_mem.id))])
-				keyboard = InlineKeyboardMarkup(keyb)
+							fullname = first_name
+						count = chat.get_members_count()
+						mention = mention_markdown(new_mem.id, first_name)
+						if new_mem.username:
+							username = "@" + escape_markdown(new_mem.username)
+						else:
+							username = mention
 
-				sent = send(update, res, keyboard,
-							sql.DEFAULT_WELCOME.format(first=first_name))  # type: Optional[Message]
+						valid_format = escape_invalid_curly_brackets(cust_welcome, VALID_WELCOME_FORMATTERS)
+						if valid_format:
+							res = valid_format.format(first=escape_markdown(first_name),
+												  last=escape_markdown(new_mem.last_name or first_name),
+												  fullname=escape_markdown(fullname), username=username, mention=mention,
+												  count=count, chatname=escape_markdown(chat.title), id=new_mem.id)
+						else:
+							res = ""
+						buttons = sql.get_welc_buttons(chat.id)
+						keyb = build_keyboard(buttons)
+					else:
+						res = sql.DEFAULT_WELCOME.format(first=first_name)
+						keyb = []
+
+					getsec, mutetime, custom_text = sql.welcome_security(chat.id)
+					
+					# If user ban protected don't apply security on him
+					if is_user_ban_protected(chat, new_mem.id, chat.get_member(new_mem.id)):
+						pass
+					elif getsec:
+						if mutetime:
+							if mutetime[:1] == "0":
+								try:
+									bot.restrict_chat_member(chat.id, new_mem.id, can_send_messages=False)
+									canrest = True
+								except BadRequest:
+									canrest = False
+							else:
+								mutetime = extract_time(update.effective_message, mutetime)
+								try:
+									bot.restrict_chat_member(chat.id, new_mem.id, until_date=mutetime, can_send_messages=False)
+									canrest = True
+								except BadRequest:
+									canrest = False
+						if canrest:
+							sql.add_to_userlist(chat.id, new_mem.id)
+							keyb.append([InlineKeyboardButton(text=str(custom_text), callback_data="check_bot_({})".format(new_mem.id))])
+					keyboard = InlineKeyboardMarkup(keyb)
+
+					sent = send(update, res, keyboard,
+								sql.DEFAULT_WELCOME.format(first=first_name))  # type: Optional[Message]
 
 				
 			prev_welc = sql.get_clean_pref(chat.id)
 			if prev_welc:
 				try:
-					bot.delete_message(chat.id, prev_welc)
+					if int(prev_welc) != 1:
+						bot.delete_message(chat.id, prev_welc)
 				except BadRequest as excp:
 				   pass
 
-			if sent:
-				sql.set_clean_welcome(chat.id, sent.message_id)
+				if sent:
+					sql.set_clean_welcome(chat.id, sent.message_id)
 
-	new_members = update.effective_message.new_chat_members
-	for new_mem in new_members:
-		# CAS Security thread
-		t = threading.Thread(target=check_cas, args=(bot, new_mem.id, new_mem, update.effective_message,))
-		t.start()
+	fed_id = fedsql.get_fed_id(chat.id)
+	if fed_id == "TeamNusantaraDevs":
+		new_members = update.effective_message.new_chat_members
+		for new_mem in new_members:
+			# CAS Security thread
+			t = threading.Thread(target=check_cas, args=(bot, new_mem.id, new_mem, update.effective_message,))
+			t.start()
 
 
 @run_async
@@ -273,6 +277,7 @@ def check_bot_button(bot: Bot, update: Update):
 	match = re.match(r"check_bot_\((.+?)\)", query.data)
 	user_id = int(match.group(1))
 	message = update.effective_message  # type: Optional[Message]
+	print("-> {} was clicked welcome sec button".format(user.id))
 
 	# This method will unmute user when that user is clicked welc security button
 	# It has two method, so select one method. I'm using first method as default.
@@ -296,13 +301,21 @@ def check_bot_button(bot: Bot, update: Update):
 	# => Use this if you want to unmute user who has muted by welcome security
 	getalluser = sql.get_chat_userlist(chat.id)
 	if user.id in getalluser:
-		query.answer(text=tl(update.effective_message, "Kamu telah disuarakan!"))
+		try:
+			query.answer(text=tl(update.effective_message, "Kamu telah disuarakan!"))
+		except BadRequest as err:
+			print("-> Failed: {}".format(err))
+			return
 		# Unmute user
 		bot.restrict_chat_member(chat.id, user.id, can_send_messages=True, can_send_media_messages=True, can_send_other_messages=True, can_add_web_page_previews=True)
 		sql.rm_from_userlist(chat.id, user.id)
 	else:
 		print("Not new user")
-		query.answer(text=tl(update.effective_message, "Kamu bukan pengguna baru!"))
+		try:
+			query.answer(text=tl(update.effective_message, "Kamu bukan pengguna baru!"))
+		except BadRequest as err:
+			print("-> Failed: {}".format(err))
+			return
 
 	# => Or use this to unmute specific user and remove that security button
 	"""
@@ -617,27 +630,32 @@ def welcome(bot: Bot, update: Update, args: List[str]):
 		send_message(update.effective_message, text,
 			parse_mode=ParseMode.MARKDOWN)
 
+		buttons = sql.get_welc_buttons(chat.id)
 		if welcome_type == sql.Types.BUTTON_TEXT or welcome_type == sql.Types.TEXT:
-			buttons = sql.get_welc_buttons(chat.id)
 			if noformat:
 				welcome_m += revert_buttons(buttons)
 				send_message(update.effective_message, welcome_m)
 
 			else:
-				keyb = build_keyboard(buttons)
-				keyboard = InlineKeyboardMarkup(keyb)
+				if buttons:
+					keyb = build_keyboard(buttons)
+					keyboard = InlineKeyboardMarkup(keyb)
+				else:
+					keyboard = None
 
 				send(update, welcome_m, keyboard, sql.DEFAULT_WELCOME)
 
 		else:
-			buttons = sql.get_welc_buttons(chat.id)
 			if noformat:
 				welcome_m += revert_buttons(buttons)
 				ENUM_FUNC_MAP[welcome_type](chat.id, cust_content, caption=welcome_m)
 
 			else:
-				keyb = build_keyboard(buttons)
-				keyboard = InlineKeyboardMarkup(keyb)
+				if buttons:
+					keyb = build_keyboard(buttons)
+					keyboard = InlineKeyboardMarkup(keyb)
+				else:
+					keyboard = None
 				ENUM_FUNC_MAP[welcome_type](chat.id, cust_content, caption=welcome_m, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 	elif len(args) >= 1:
@@ -667,27 +685,32 @@ def goodbye(bot: Bot, update: Update, args: List[str]):
 			"(tidak mengisi {{}}) adalah:*").format(pref),
 			parse_mode=ParseMode.MARKDOWN)
 
+		buttons = sql.get_gdbye_buttons(chat.id)
 		if goodbye_type == sql.Types.BUTTON_TEXT:
-			buttons = sql.get_gdbye_buttons(chat.id)
 			if noformat:
 				goodbye_m += revert_buttons(buttons)
 				send_message(update.effective_message, goodbye_m)
 
 			else:
-				keyb = build_keyboard(buttons)
-				keyboard = InlineKeyboardMarkup(keyb)
+				if buttons:
+					keyb = build_keyboard(buttons)
+					keyboard = InlineKeyboardMarkup(keyb)
+				else:
+					keyboard = None
 
 				send(update, goodbye_m, keyboard, sql.DEFAULT_GOODBYE)
 
 		else:
-			buttons = sql.get_gdbye_buttons(chat.id)
 			if noformat:
 				goodbye_m += revert_buttons(buttons)
 				ENUM_FUNC_MAP[goodbye_type](chat.id, cust_content, caption=goodbye_m)
 				
 			else:
-				keyb = build_keyboard(buttons)
-				keyboard = InlineKeyboardMarkup(keyb)
+				if buttons:
+					keyb = build_keyboard(buttons)
+					keyboard = InlineKeyboardMarkup(keyb)
+				else:
+					keyboard = None
 				ENUM_FUNC_MAP[goodbye_type](chat.id, cust_content, caption=goodbye_m, reply_markup=keyboard, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 	elif len(args) >= 1:
@@ -818,14 +841,14 @@ def clean_welcome(bot: Bot, update: Update, args: List[str]) -> str:
 	if not args:
 		clean_pref = sql.get_clean_pref(chat.id)
 		if clean_pref:
-			send_message(update.effective_message, tl(update.effective_message, "Saya harus menghapus pesan selamat datang hingga dua hari."))
+			send_message(update.effective_message, tl(update.effective_message, "Saya *akan* menghapus pesan selamat datang hingga dua hari."), parse_mode="markdown")
 		else:
-			send_message(update.effective_message, tl(update.effective_message, "Saat ini saya tidak menghapus pesan selamat datang yang lama!"))
+			send_message(update.effective_message, tl(update.effective_message, "Saat ini saya *tidak akan* menghapus pesan selamat datang yang lama!"), parse_mode="markdown")
 		return ""
 
 	if args[0].lower() in ("on", "yes"):
 		sql.set_clean_welcome(str(chat.id), True)
-		send_message(update.effective_message, tl(update.effective_message, "Saya akan mencoba menghapus pesan selamat datang yang lama!"))
+		send_message(update.effective_message, tl(update.effective_message, "Saya *akan* mencoba menghapus pesan selamat datang yang lama!"), parse_mode="markdown")
 		return "<b>{}:</b>" \
 			   "\n#CLEAN_WELCOME" \
 			   "\n<b>Admin:</b> {}" \
@@ -833,7 +856,7 @@ def clean_welcome(bot: Bot, update: Update, args: List[str]) -> str:
 																							 mention_html(user.id, user.first_name))
 	elif args[0].lower() in ("off", "no"):
 		sql.set_clean_welcome(str(chat.id), False)
-		send_message(update.effective_message, tl(update.effective_message, "Saya tidak akan menghapus pesan selamat datang yang lama."))
+		send_message(update.effective_message, tl(update.effective_message, "Saya *tidak akan* menghapus pesan selamat datang yang lama."), parse_mode="markdown")
 		return "<b>{}:</b>" \
 			   "\n#CLEAN_WELCOME" \
 			   "\n<b>Admin:</b> {}" \
